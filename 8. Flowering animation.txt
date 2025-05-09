@@ -1,0 +1,120 @@
+// Flowering animation
+#include <GL/glut.h>
+#include <cmath>
+
+int stage = 0;  // 0: Bud, 1: Growing, 2: Bloomed, 3: Aging, 4: Falling
+int petalFallFrame = 0;
+float petalFallY[6] = {300, 300, 300, 300, 300, 300};
+bool petalDropped[6] = {false, false, false, false, false, false};
+
+// Draw a filled circle at (x, y) with given radius and color
+void drawCircle(float x, float y, float radius, float r, float g, float b) {
+    glColor3f(r, g, b);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(x, y);
+    for (int angle = 0; angle <= 360; angle++) {
+        float rad = angle * M_PI / 180;
+        glVertex2f(x + cos(rad) * radius, y + sin(rad) * radius);
+    }
+    glEnd();
+}
+
+// Draw the green stem
+void drawStem() {
+    glColor3f(0.0, 0.6, 0.0); // Green
+    glBegin(GL_POLYGON);
+    glVertex2f(315, 100);
+    glVertex2f(325, 100);
+    glVertex2f(325, 300);
+    glVertex2f(315, 300);
+    glEnd();
+}
+
+// Draw 6 petals around a center (with optional aging or falling)
+void drawPetals(float centerX, float centerY, float radius, bool falling = false, bool aging = false) {
+    for (int i = 0; i < 6; i++) {
+        float angle = i * 60 * M_PI / 180;
+        float x = centerX + cos(angle) * 30;
+        float y = centerY + sin(angle) * 30;
+
+        if (falling && petalDropped[i]) {
+            y = petalFallY[i];
+        }
+
+        float r = aging ? 0.8f : 1.0f;
+        float g = aging ? 0.3f : 0.4f;
+        float b = aging ? 0.5f : 0.7f;
+
+        drawCircle(x, y, radius, r, g, b);
+    }
+}
+
+// Display function handling different flower stages
+void display() {
+    glClearColor(0.85, 0.95, 1.0, 1.0); // Soft blue background
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    float centerX = 320;
+    float centerY = 300;
+
+    drawStem(); // Always draw the stem
+
+    if (stage == 0) {
+        drawCircle(centerX, centerY, 10, 0.0, 0.6, 0.0); // Small bud
+    } else if (stage == 1) {
+        drawCircle(centerX, centerY, 15, 0.0, 0.8, 0.0); // Bigger bud
+    } else if (stage == 2) {
+        drawCircle(centerX, centerY, 15, 1.0, 0.8, 0.0); // Bright yellow center
+        drawPetals(centerX, centerY, 15); // Bloomed petals
+    } else if (stage == 3) {
+        drawCircle(centerX, centerY, 15, 0.7, 0.4, 0.0); // Aging center
+        drawPetals(centerX, centerY, 15, false, true);   // Aging petals
+    } else if (stage == 4) {
+        drawCircle(centerX, centerY, 15, 0.6, 0.3, 0.0); // Dull center
+        drawPetals(centerX, centerY, 15, true, true);    // Falling petals
+    }
+
+    glutSwapBuffers();
+}
+
+// Updates animation stage and petal fall logic
+void update(int value) {
+    if (stage < 4) {
+        stage++;
+        glutTimerFunc(2000, update, 0); // Advance stage every 2 seconds
+    } else {
+        if (petalFallFrame < 6) {
+            petalDropped[petalFallFrame] = true;
+            petalFallFrame++;
+        } else {
+            for (int i = 0; i < 6; i++) {
+                if (petalFallY[i] > 80)
+                    petalFallY[i] -= 2; // Petals fall gradually
+            }
+        }
+        glutTimerFunc(100, update, 0); // Faster loop during falling
+    }
+
+    glutPostRedisplay(); // Request redraw
+}
+
+// OpenGL setup
+void init() {
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0, 640, 0, 480);
+}
+
+// Main function
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(640, 480);
+    glutInitWindowPosition(200, 200);
+    glutCreateWindow("Flower Life Cycle with Aging and Falling Petals");
+
+    init();
+    glutDisplayFunc(display);
+    glutTimerFunc(2000, update, 0);
+    glutMainLoop();
+    return 0;
+}
